@@ -65,25 +65,38 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     },
 
     _notifyReady: function() {
-      //console.group('[' + this.name + '#' + this.id + ']', 'ready');
-      this._ready();
+      this._broadcast('_beforeReady');
+      this._broadcast('_ready', true);
+      this._readied = true;
+    },
+
+    _broadcast: function(method, cleanup) {
+      var moniker = '[' + this.tag + (this.id ? '#' + this.id : '') + 
+        ']: ' + method;
+      console.group(moniker);
+      this[method]();
       var n$ = this._readyListeners;
       if (n$) {
         for (var i=0, l=n$.length, n; (i<l) && (n=n$[i]); i++) {
-          n._notifyReady();
+          n._broadcast(method, cleanup);
         }
       }
-      this._readyListeners = null;
-      //console.groupEnd('[' + this.name + '#' + this.id + ']', 'ready');
+      if (cleanup) {
+        this._readyListeners = null;
+      }
+      console.groupEnd(moniker);
     },
 
-    _ready: function() {
-      this._readied = true;
+    _beforeReady: function() {
+      this.takeAttributes();
       // TODO(jmesserly): this is a hook to allow content.html to be called
       // before "ready". This needs to be factored better.
       if (this._useContent) {
         this.distributeContent();
       }
+    },
+
+    _ready: function() {
       this.ready();
     },
 

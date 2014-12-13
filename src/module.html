@@ -33,7 +33,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         break;
     }
     modules[name] = module;
-  };
+  }
 
   function marshal(name) {
     return modules[name];
@@ -41,17 +41,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
   var modules = {};
 
-  if (window.HTMLImports) {
-    var using = function(depends, task) {
-      HTMLImports.whenImportsReady(function() {
-        withDependencies(task, depends);
-      });
-    };
-  } else {
-    var using = function(depends, task) {
-      withDependencies(task, depends);
-    };
-  }
+  // NOTE: when used in conjunction with the imports polyfill,
+  // if a module is defined in an import, `using` is not available
+  // in the main document until `HTMLImports.whenReady`.
+  var using = function(depends, task) {
+    withDependencies(task, depends);
+  };
 
   // exports
 

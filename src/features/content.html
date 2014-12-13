@@ -24,12 +24,13 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     isHost: true,
 
     register: function(prototype) {
-      var t = prototype._template;
-      prototype._useContent = prototype._useContent ||
-        Boolean(t && t.content.querySelector('content'));
+      // var t = prototype._template;
+      // prototype._useContent = prototype._useContent ||
+      //   Boolean(t && t.content.querySelector('content'));
+      prototype._useContent = true;
     },
 
-    poolContent: function() {
+    prepareContent: function() {
       // capture lightChildren to help reify dom scoping
       saveLightChildrenIfNeeded(this);
       // create our lite ShadowRoot document fragment
@@ -49,7 +50,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     distributeContent: function() {
       // sanity check to guard against uninitialized state
       if (!this.contentRoot) {
-        throw Error('poolContent() must be called before distributeContent()');
+        throw Error('prepareContent() must be called before distributeContent()');
       }
       // NOTE: `contentRoot` is populated only for the first 
       // distribution. After that dom should be in the composed tree and
@@ -138,7 +139,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         var content = node;
         var anyDistributed = false;
         for (var i = 0; i < pool.length; i++) {
-          var node = pool[i];
+          node = pool[i];
           // skip nodes that were already used
           if (!node) {
             continue;
@@ -200,6 +201,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       return children;
     },
 
+    /*
     _updateChildNodes: function(node, children) {
       // Add the children that need to be added. Walk the list backwards so we can
       // use insertBefore easily.
@@ -219,6 +221,33 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         var nextNode = child.nextSibling;
         node.removeChild(child);
         child = nextNode;
+      }
+    },
+    */
+    
+    // TODO(sorvell): experimental attempt to distribute left-to-right to 
+    // maintain the same attach order as the platform.
+    _updateChildNodes: function(node, children) {
+      // Add the children that need to be added. 
+      for (var i=0, l=children.length, c, b; (i<l) && (c=children[i]); i++) {
+        b = children[i-1] || null;
+        if (c.parentNode != node || c.previousSibling != b) {
+          insertBefore(node, c, b && b.nextSibling)
+        }
+      }
+      // We just added nodes in order, starting from an unknown point;
+      // therefore delete everything before and after the expected children.
+      var last = children[children.length-1];
+      var lastChild = node.lastChild;
+      while (lastChild && lastChild != last) {
+        node.removeChild(lastChild);
+        lastChild = node.lastChild;
+      }
+      var first = children[0];
+      var firstChild = node.firstChild;
+      while (firstChild && firstChild != first) {
+        node.removeChild(firstChild);
+        firstChild = node.firstChild;
       }
     },
 
@@ -292,6 +321,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     saveLightChildrenIfNeeded(parentNode);
     // insert it into the real DOM
     parentNode.insertBefore(newChild, refChild);
+  }
+
+  function appendChild(parentNode, newChild) {
+    // remove child from its old parent first
+    remove(newChild);
+    // make sure we never lose logical DOM information:
+    // if the parentNode doesn't have lightChildren, save that information now.
+    saveLightChildrenIfNeeded(parentNode);
+    // insert it into the real DOM
+    parentNode.appendChild(newChild);
   }
 
   function remove(node) {
